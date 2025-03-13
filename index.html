@@ -48,6 +48,87 @@
         label {
             margin-right: 10px;
         }
+        #calculationArea {
+            margin-top: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+        }
+        #calculationArea h2 {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        #calculationArea .section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 4px solid #4CAF50; /* Green for User Values */
+        }
+        #calculationArea .section.parameters {
+            border-left-color: #2196F3; /* Blue for Parameters */
+        }
+        #calculationArea .section.formula {
+            border-left-color: #9C27B0; /* Purple for Formula */
+        }
+        #calculationArea .section.calculation {
+            border-left-color: #FF9800; /* Orange for Calculation */
+        }
+        #calculationArea .section.explanation {
+            border-left-color: #607D8B; /* Grey for Explanation */
+        }
+        #calculationArea table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        #calculationArea th, #calculationArea td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        #calculationArea th {
+            background-color: #f0f0f0;
+        }
+        #calculationArea tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        #calculationArea p {
+            padding-left: 20px;
+            position: relative;
+            margin: 5px 0;
+        }
+        #calculationArea p:before {
+            content: "•";
+            position: absolute;
+            left: 5px;
+            color: #4CAF50;
+        }
+        #calculationArea .result {
+            font-weight: bold;
+            padding: 5px 10px;
+            background-color: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        #calculationArea .explanation {
+            font-style: italic;
+        }
+        @media (max-width: 600px) {
+            #calculationArea {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+            #calculationArea h2 {
+                font-size: 1.1em;
+            }
+            #calculationArea th, #calculationArea td {
+                padding: 6px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -60,18 +141,22 @@
                 <option value="soybean">Soybean</option>
             </select>
             <label for="pPPM">P ppm (STP):</label>
-            <input type="number" id="pPPM" value="28" min="0" max="60">
+            <input type="number" id="pPPM" value="28" min="0" max="120">
             <label for="buildYears">Build Years:</label>
             <input type="number" id="buildYears" value="4" min="1">
             <label for="yieldGoal">Yield Goal (bu/ac):</label>
             <input type="number" id="yieldGoal" value="210">
             <label for="pBuildTo">P Build to Level:</label>
-            <input type="number" id="pBuildTo" value="23" min="0">
+            <input type="number" id="pBuildTo" value="23" min="0" max="120">
             <label for="pCutOff">P Cut Off Level:</label>
-            <input type="number" id="pCutOff" value="51" min="0">
+            <input type="number" id="pCutOff" value="51" min="0" max="120">
         </div>
         <div id="chartContainer">
             <canvas id="myChart"></canvas>
+        </div>
+        <div id="calculationArea">
+            <h2>Phosphorus Recommendation Calculation at STP</h2>
+            <div id="calculationDetails"></div>
         </div>
     </div>
 
@@ -96,7 +181,7 @@
             }
         };
 
-        // Function to calculate P_rec (#P/ac) based on the formula
+        // Function to calculate P_rec (#P/ac) based on the formula (corrected)
         function calculatePRec(STP, YG, crop, buildYears, pCrit, pCol) {
             const factors = calcFactors[crop];
             let P_rec;
@@ -108,7 +193,7 @@
             return Math.max(0, P_rec);
         }
 
-        // Function to generate Yield Goals based on user input
+        // Function to generate Yield Goals based on user input (for chart)
         function generateYieldGoals(crop, baseYG) {
             baseYG = parseFloat(baseYG);
             if (crop === 'corn') {
@@ -139,8 +224,9 @@
             '#1e90ff'  // Dodger Blue
         ];
 
-        // X-axis values (P ppm)
-        const xValues = Array.from({ length: 21 }, (_, i) => i * 3); // P ppm from 0 to 60
+        // Define the maximum possible range for xValues (e.g., up to 120 ppm)
+        const maxPossiblePpm = 120;
+        const xValues = Array.from({ length: Math.floor(maxPossiblePpm / 3) + 1 }, (_, i) => i * 3); // 0 to 120 ppm
 
         // Get initial values from input fields
         const initialCrop = document.getElementById('cropSelector').value;
@@ -157,13 +243,17 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: {
+                    duration: 1000, // Animation duration in milliseconds (1 second)
+                    easing: 'easeInOutQuad', // Smooth easing function for a natural transition
+                },
                 scales: {
                     x: {
                         type: 'linear', // Use a linear axis for X
                         title: { display: true, text: 'P ppm', color: '#333' },
                         ticks: { color: '#333' },
                         min: 0,
-                        max: 70
+                        max: 70 // Default max set to 70 ppm
                     },
                     y: {
                         title: { display: true, text: '#P/ac', color: '#333' },
@@ -185,12 +275,7 @@
                                 yMax: (initialCrop === 'corn') ? 200 : 140,
                                 borderColor: 'red',
                                 borderWidth: 2,
-                                borderDash: [5, 5],
-                                label: {
-                                    content: `P Build to Level (${initialPBuildTo})`,
-                                    enabled: true,
-                                    position: 'top'
-                                }
+                                borderDash: [5, 5]
                             },
                             cutOffCornLine: {
                                 type: 'line',
@@ -200,12 +285,7 @@
                                 yMax: 200,
                                 borderColor: 'green',
                                 borderWidth: 2,
-                                borderDash: [5, 5],
-                                label: {
-                                    content: `P Cut Off Level (Corn ${initialPCutOff})`,
-                                    enabled: true,
-                                    position: 'top'
-                                }
+                                borderDash: [5, 5]
                             },
                             cutOffSoybeanLine: {
                                 type: 'line',
@@ -215,12 +295,7 @@
                                 yMax: 140,
                                 borderColor: 'green',
                                 borderWidth: 2,
-                                borderDash: [5, 5],
-                                label: {
-                                    content: `P Cut Off Level (Soybean ${initialPCutOff})`,
-                                    enabled: true,
-                                    position: 'top'
-                                }
+                                borderDash: [5, 5]
                             }
                         }
                     }
@@ -254,51 +329,176 @@
             const yieldGoal = parseFloat(document.getElementById('yieldGoal').value) || 210;
             const pBuildTo = parseFloat(document.getElementById('pBuildTo').value) || 23;
             const pCutOff = parseFloat(document.getElementById('pCutOff').value) || 51;
+            const STP = parseFloat(document.getElementById('pPPM').value) || 28; // User-entered STP
 
-            console.log(`Updating chart: crop=${crop}, pBuildTo=${pBuildTo}, pCutOff=${pCutOff}`);
+            console.log(`Updating chart: crop=${crop}, pBuildTo=${pBuildTo}, pCutOff=${pCutOff}, STP=${STP}`);
 
-            // Update annotation positions and labels
+            // Dynamically determine the X-axis maximum
+            let xMax = 70; // Default maximum
+            if (pCutOff > 70) {
+                xMax = Math.ceil(pCutOff / 10) * 10; // Next nearest ten above P_col
+            }
+
+            // Update annotation positions
             myChart.options.plugins.annotation.annotations.buildToLine.xMin = pBuildTo;
             myChart.options.plugins.annotation.annotations.buildToLine.xMax = pBuildTo;
-            myChart.options.plugins.annotation.annotations.buildToLine.label.content = `P Build to Level (${pBuildTo})`;
             myChart.options.plugins.annotation.annotations.buildToLine.yMax = (crop === 'corn') ? 200 : 140;
 
             myChart.options.plugins.annotation.annotations.cutOffCornLine.xMin = pCutOff;
             myChart.options.plugins.annotation.annotations.cutOffCornLine.xMax = pCutOff;
-            myChart.options.plugins.annotation.annotations.cutOffCornLine.label.content = `P Cut Off Level (Corn ${pCutOff})`;
             myChart.options.plugins.annotation.annotations.cutOffCornLine.yMax = 200;
 
             myChart.options.plugins.annotation.annotations.cutOffSoybeanLine.xMin = pCutOff;
             myChart.options.plugins.annotation.annotations.cutOffSoybeanLine.xMax = pCutOff;
-            myChart.options.plugins.annotation.annotations.cutOffSoybeanLine.label.content = `P Cut Off Level (Soybean ${pCutOff})`;
             myChart.options.plugins.annotation.annotations.cutOffSoybeanLine.yMax = 140;
 
             // Ensure the correct cutoff line is displayed based on crop
             myChart.options.plugins.annotation.annotations.cutOffCornLine.display = (crop === 'corn');
             myChart.options.plugins.annotation.annotations.cutOffSoybeanLine.display = (crop === 'soybean');
 
-            // Generate Yield Goals
+            // Generate Yield Goals (for chart with multiple goals)
             const yieldGoals = generateYieldGoals(crop, yieldGoal);
 
-            // Generate datasets for each Yield Goal
-            const datasets = yieldGoals.map((yg, index) => {
-                const data = xValues.map(STP => ({
-                    x: STP,
-                    y: calculatePRec(STP, yg, crop, buildYears, pBuildTo, pCutOff)
-                }));
-                return {
-                    label: `YG ${yg}`,
-                    data: data,
-                    borderColor: colors[index % colors.length],
-                    fill: false,
-                    tension: 0.4
-                };
-            });
+            // Update datasets with new y values while keeping x values constant
+            if (myChart.data.datasets.length === 0) {
+                // Initial setup of datasets including P Build to and P Cut Off
+                const datasets = [
+                    ...yieldGoals.map((yg, index) => {
+                        const data = xValues.map(STP => ({
+                            x: STP,
+                            y: calculatePRec(STP, yg, crop, buildYears, pBuildTo, pCutOff)
+                        }));
+                        return {
+                            label: `YG ${yg}`,
+                            data: data,
+                            borderColor: colors[index % colors.length],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0 // Hide points for yield goals
+                        };
+                    }),
+                    {
+                        label: 'P Build to Level',
+                        data: [{ x: pBuildTo, y: 0 }, { x: pBuildTo, y: (crop === 'corn') ? 200 : 140 }],
+                        borderColor: 'red',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointStyle: 'rect', // Use a square for the legend
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        fill: false
+                    },
+                    {
+                        label: 'P Cut Off Level',
+                        data: [{ x: pCutOff, y: 0 }, { x: pCutOff, y: (crop === 'corn') ? 200 : 140 }],
+                        borderColor: 'green',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointStyle: 'triangle', // Use a triangle for the legend
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        fill: false
+                    }
+                ];
+                myChart.data.datasets = datasets;
+            } else {
+                // Update existing datasets with new y values
+                myChart.data.datasets.forEach((dataset, index) => {
+                    if (index < yieldGoals.length) {
+                        // Update yield goal datasets
+                        const yg = yieldGoals[index];
+                        dataset.label = `YG ${yg}`;
+                        dataset.data.forEach((point, i) => {
+                            point.y = calculatePRec(point.x, yg, crop, buildYears, pBuildTo, pCutOff);
+                        });
+                    } else if (index === yieldGoals.length) {
+                        // Update P Build to Level dataset
+                        dataset.label = 'P Build to Level';
+                        dataset.data = [{ x: pBuildTo, y: 0 }, { x: pBuildTo, y: (crop === 'corn') ? 200 : 140 }];
+                    } else {
+                        // Update P Cut Off Level dataset
+                        dataset.label = 'P Cut Off Level';
+                        dataset.data = [{ x: pCutOff, y: 0 }, { x: pCutOff, y: (crop === 'corn') ? 200 : 140 }];
+                    }
+                });
+            }
 
-            // Update chart data
-            myChart.data.datasets = datasets;
+            // Update chart scales
             myChart.options.scales.y.max = (crop === 'corn') ? 200 : 140;
+            myChart.options.scales.x.max = xMax; // Update X-axis max dynamically
+
+            // Trigger update with animation
             myChart.update();
+
+            // Update calculation area with single yield goal
+            updateCalculationArea(STP, yieldGoal, crop, buildYears, pBuildTo, pCutOff);
+        }
+
+        // Function to update the calculation area below the chart
+        function updateCalculationArea(STP, YG, crop, buildYears, pCrit, pCol) {
+            const factors = calcFactors[crop];
+            const calculationDetails = document.getElementById('calculationDetails');
+            const P_rec = calculatePRec(STP, YG, crop, buildYears, pCrit, pCol);
+
+            let html = `<div class="section"><p>User-Entered Values:</p>`;
+            html += `<table><tr><th>Parameter</th><th>Value</th></tr>`;
+            html += `<tr><td>Soil Test Phosphorus (STP)</td><td>${STP} ppm</td></tr>`;
+            html += `<tr><td>Yield Goal (YG)</td><td>${YG} bu/ac</td></tr>`;
+            html += `<tr><td>Build Years</td><td>${buildYears}</td></tr>`;
+            html += `<tr><td>P Build to Level (P_crit)</td><td>${pCrit} ppm</td></tr>`;
+            html += `<tr><td>P Cut Off Level (P_col)</td><td>${pCol} ppm</td></tr>`;
+            html += `</table></div>`;
+
+            html += `<div class="section parameters"><p>Crop-Specific Parameters:</p>`;
+            html += `<table><tr><th>Parameter</th><th>Value</th></tr>`;
+            html += `<tr><td>PhosA</td><td>${factors.PhosA}</td></tr>`;
+            html += `<tr><td>PhosB</td><td>${factors.PhosB}</td></tr>`;
+            html += `<tr><td>Base Yield (BYG)</td><td>${factors.BYG} bu/ac</td></tr>`;
+            html += `<tr><td>Phosphorus Coefficient (P_CR)</td><td>${factors.P_CR}</td></tr>`;
+            html += `</table></div>`;
+
+            html += `<div class="section formula"><p>Formula:</p>`;
+            html += `<p>If the soil test phosphorus is less than the Critical Level (STP < P_crit), then:</p>`;
+            html += `<p>P_rec = (PhosA * exp(PhosB * STP) + (YG - BYG) * P_CR) * (4 / Build Years)</p>`;
+            html += `<p>If the soil test phosphorus is greater than/equal to the Critical Level (STP ≥ P_crit), then:</p>`;
+            html += `<p>P_rec = (PhosA * exp(PhosB * STP) + (YG - BYG) * P_CR) * ((P_col - STP) / (P_col - P_crit)) * (4 / Build Years)</p>`;
+            html += `</div>`;
+
+            // Calculation breakdown
+            const term1 = factors.PhosA * Math.exp(factors.PhosB * STP);
+            const term2 = (YG - factors.BYG) * factors.P_CR;
+            let calculationBreakdown = `<div class="section calculation"><p>Calculation (STP ${STP <= pCrit ? '<' : '≥'} P_crit):</p>`;
+            if (STP <= pCrit) {
+                const multiplier = 4 / buildYears;
+                const P_recValue = (term1 + term2) * multiplier;
+                calculationBreakdown += `<p>Step 1: PhosA * exp(PhosB * STP) = ${factors.PhosA} * exp(${factors.PhosB} * ${STP}) = ${term1.toFixed(2)}</p>`;
+                calculationBreakdown += `<p>Step 2: (YG - BYG) * P_CR = (${YG} - ${factors.BYG}) * ${factors.P_CR} = ${term2.toFixed(2)}</p>`;
+                calculationBreakdown += `<p>Step 3: Total = Step 1 + Step 2 = ${term1.toFixed(2)} + ${term2.toFixed(2)} = ${(term1 + term2).toFixed(2)}</p>`;
+                calculationBreakdown += `<p>Step 4: Multiplier = (4 / Build Years) = (4 / ${buildYears}) = ${multiplier.toFixed(2)}</p>`;
+                calculationBreakdown += `<p class="result">Step 5: P_rec = Total * Multiplier = ${(term1 + term2).toFixed(2)} * ${multiplier.toFixed(2)} = ${P_recValue.toFixed(2)} #P/ac</p>`;
+            } else {
+                const multiplier1 = (pCol - STP) / (pCol - pCrit);
+                const multiplier2 = 4 / buildYears;
+                const P_recValue = (term1 + term2) * multiplier1 * multiplier2;
+                calculationBreakdown += `<p>Step 1: PhosA * exp(PhosB * STP) = ${factors.PhosA} * exp(${factors.PhosB} * ${STP}) = ${term1.toFixed(2)}</p>`;
+                calculationBreakdown += `<p>Step 2: (YG - BYG) * P_CR = (${YG} - ${factors.BYG}) * ${factors.P_CR} = ${term2.toFixed(2)}</p>`;
+                calculationBreakdown += `<p>Step 3: Total = Step 1 + Step 2 = ${term1.toFixed(2)} + ${term2.toFixed(2)} = ${(term1 + term2).toFixed(2)}</p>`;
+                calculationBreakdown += `<p>Step 4: Multiplier 1 = (P_col - STP) / (P_col - P_crit) = (${pCol} - ${STP}) / (${pCol} - ${pCrit}) = ${multiplier1.toFixed(2)}</p>`;
+                calculationBreakdown += `<p>Step 5: Multiplier 2 = (4 / Build Years) = (4 / ${buildYears}) = ${multiplier2.toFixed(2)}</p>`;
+                calculationBreakdown += `<p class="result">Step 6: P_rec = Total * Multiplier 1 * Multiplier 2 = ${(term1 + term2).toFixed(2)} * ${multiplier1.toFixed(2)} * ${multiplier2.toFixed(2)} = ${P_recValue.toFixed(2)} #P/ac</p>`;
+            }
+            calculationBreakdown += `</div>`;
+
+            // Dynamic explanation
+            let explanation = `<div class="section explanation"><p>**Explanation:**</p>`;
+            if (STP <= pCrit) {
+                explanation += `<p class="explanation">Since the soil test phosphorus (STP = ${STP} ppm) is less than the critical level (P_crit = ${pCrit} ppm), the formula calculates the full phosphorus requirement to optimize yield. The term <code>PhosA * exp(PhosB * STP)</code> (${term1.toFixed(2)}) represents the soil's phosphorus contribution, which decreases as STP increases due to the negative PhosB (${factors.PhosB}). The term <code>(YG - BYG) * P_CR</code> (${term2.toFixed(2)}) adds the phosphorus needed for the yield goal (${YG} bu/ac) above the base yield (BYG = ${factors.BYG}), scaled by the crop's phosphorus coefficient (P_CR = ${factors.P_CR}). The total (${(term1 + term2).toFixed(2)}) is multiplied by <code>(4 / Build Years)</code> (${(4 / buildYears).toFixed(2)}) to spread the recommendation over ${buildYears} years, resulting in ${P_rec.toFixed(2)} #P/ac. This value indicates the soil requires additional phosphorus to reach optimal levels for the target yield.</p>`;
+            } else {
+                explanation += `<p class="explanation">Since the soil test phosphorus (STP = ${STP} ppm) is greater than or equal to the critical level (P_crit = ${pCrit} ppm), the formula adjusts for the soil's ability to supply phosphorus. The term <code>PhosA * exp(PhosB * STP)</code> (${term1.toFixed(2)}) reflects the soil's contribution, reduced by the exponential decay (PhosB = ${factors.PhosB}). The term <code>(YG - BYG) * P_CR</code> (${term2.toFixed(2)}) accounts for the yield goal (${YG} bu/ac) above the base yield (BYG = ${factors.BYG}), scaled by P_CR (${factors.P_CR}). The total (${(term1 + term2).toFixed(2)}) is multiplied by <code>(P_col - STP) / (P_col - P_crit)</code> (${((pCol - STP) / (pCol - pCrit)).toFixed(2)}), which scales down the recommendation as STP approaches the cut-off level (P_col = ${pCol} ppm), indicating the soil's sufficiency. This is then multiplied by <code>(4 / Build Years)</code> (${(4 / buildYears).toFixed(2)}) to annualize over ${buildYears} years, yielding ${P_rec.toFixed(2)} #P/ac. This lower value suggests the soil already provides much of the needed phosphorus, reducing the required application.</p>`;
+            }
+            explanation += `</div>`;
+
+            calculationDetails.innerHTML = html + calculationBreakdown + explanation;
         }
 
         // Event listeners for input changes
@@ -310,7 +510,7 @@
         document.getElementById('pCutOff').addEventListener('input', updateChart);
 
         // Initial chart render
-        updateChart();
+        updateDefaults();
     </script>
 </body>
 </html>
