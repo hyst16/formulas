@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Cal 40 Gypsum Recommendation</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+        #chartContainer {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            height: 600px;
+        }
+        select, input {
+            padding: 10px;
+            margin: 10px 5px;
+            border-radius: 5px;
+            background-color: #ddd;
+            color: #333;
+            border: none;
+            cursor: pointer;
+        }
+        canvas {
+            max-width: 100%;
+            height: 100% !important;
+        }
+        h1 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        label {
+            margin-right: 10px;
+        }
+        #legendContainer {
+            margin-top: 10px;
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+        }
+        #legendGradient {
+            width: 100%;
+            height: 20px;
+            background: linear-gradient(to right, #00FF00, #FFFF00, #FF0000);
+            margin-bottom: 5px;
+        }
+        #legendLabels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+        #thresholdLegend {
+            margin-top: 10px;
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+        #thresholdLegend ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            justify-content: space-around;
+        }
+        #thresholdLegend li {
+            display: flex;
+            align-items: center;
+            color: #333;
+        }
+        #thresholdLegend li::before {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 2px;
+            margin-right: 5px;
+        }
+        #thresholdLegend li:nth-child(1)::before {
+            background-color: rgba(255, 99, 132, 1); /* Red line */
+        }
+        #thresholdLegend li:nth-child(2)::before {
+            background-color: rgba(54, 162, 235, 1); /* Blue line */
+        }
+        #cecEffectContainer {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 800px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #9C27B0; /* Purple to match formula section */
+        }
+        #cecEffectContainer h3 {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #9C27B0;
+        }
+        #cecEffectContainer p {
+            margin: 5px 0;
+            line-height: 1.5;
+        }
+        #calculationArea {
+            margin-top: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+        }
+        #calculationArea h2 {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        #calculationArea .section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 4px solid #4CAF50; /* Green for User Values */
+        }
+        #calculationArea .section.parameters {
+            border-left-color: #2196F3; /* Blue for Parameters */
+        }
+        #calculationArea .section.formula {
+            border-left-color: #9C27B0; /* Purple for Formula */
+        }
+        #calculationArea .section.calculation {
+            border-left-color: #FF9800; /* Orange for Calculation */
+        }
+        #calculationArea .section.explanation {
+            border-left-color: #607D8B; /* Grey for Explanation */
+        }
+        #calculationArea table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        #calculationArea th, #calculationArea td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        #calculationArea th {
+            background-color: #f0f0f0;
+        }
+        #calculationArea tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        #calculationArea p {
+            margin: 5px 0;
+        }
+        #calculationArea .step-label {
+            font-weight: bold;
+        }
+        #calculationArea .condition-met {
+            font-weight: bold;
+            background-color: #fff3e0;
+            padding: 5px;
+            border-left: 4px solid #FF9800;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        #calculationArea .result {
+            font-weight: bold;
+            padding: 5px 10px;
+            background-color: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        #calculationArea .explanation {
+            font-style: italic;
+        }
+        @media (max-width: 600px) {
+            #calculationArea {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+            #calculationArea h2 {
+                font-size: 1.1em;
+            }
+            #calculationArea th, #calculationArea td {
+                padding: 6px;
+            }
+            #cecEffectContainer {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pro Cal 40 Gypsum Recommendation vs Mg and Na</h1>
+        <div>
+            <label for="cec">CEC (meq/100g):</label>
+            <input type="number" id="cec" value="18" min="1" max="40" step="1">
+            <label for="mg">Mg (ppm):</label>
+            <input type="number" id="mg" value="415" min="0" max="600" step="50">
+            <label for="na">Na (ppm):</label>
+            <input type="number" id="na" value="120" min="0" max="300" step="50">
+            <label for="targetBSMg">Target BS Mg (%):</label>
+            <select id="targetBSMg">
+                <option value="0.145">14.5</option>
+                <option value="0.150">15.0</option>
+                <option value="0.165" selected>16.5</option>
+                <option value="0.180">18.0</option>
+                <option value="0.190">19.0</option>
+                <option value="0.200">20.0</option>
+            </select>
+        </div>
+        <div id="chartContainer">
+            <canvas id="myChart"></canvas>
+        </div>
+        <div id="legendContainer">
+            <div id="legendGradient"></div>
+            <div id="legendLabels">
+                <span>0 lbs/ac</span>
+                <span>6000 lbs/ac</span>
+                <span>12000 lbs/ac</span>
+            </div>
+        </div>
+        <div id="thresholdLegend">
+            <p>Threshold Lines Explanation:</p>
+            <ul>
+                <li>Red Line: Marks Mg = 400 ppm threshold where gypsum recommendation starts if Mg is high.</li>
+                <li>Blue Line: Marks Na = 100 ppm threshold where gypsum recommendation starts if Na is high.</li>
+            </ul>
+        </div>
+        <div id="cecEffectContainer">
+            <h3>Impact of CEC on Gypsum Recommendation</h3>
+            <p>
+                CEC (Cation Exchange Capacity) measures the soil's ability to hold and exchange nutrients like magnesium (Mg) and sodium (Na). In the Pro Cal 40 formula, CEC directly affects the gypsum recommendation by adjusting the target base saturation for Mg and the Na correction factor. Higher CEC values (e.g., 15 vs. 5 meq/100g) increase the soil's nutrient-holding capacity, which can reduce the gypsum needed if Mg or Na levels are already balanced, but it also amplifies the gypsum rate when excess Mg or Na is present. For example:
+            </p>
+            <ul>
+                <li>In the formula, the term (Target BS Mg × CEC) sets the desired Mg level. A higher CEC increases this target, lowering the net Mg contribution if actual Mg is close to the target.</li>
+                <li>The Na term (Na / 230 - 0.02 × CEC) adjusts for sodium excess, where a higher CEC increases the baseline sodium correction, potentially increasing gypsum if Na exceeds 100 ppm.</li>
+            </li>Changing CEC from 5 to 18 (the default) can significantly alter the gypsum rate, especially when Mg ≥ 400 ppm or Na ≥ 100 ppm, as seen in the chart's color intensity.</li>
+            </ul>
+            <p>
+                Experiment with different CEC values to see how it shifts the gypsum recommendation on the chart!
+            </p>
+        </div>
+        <div id="calculationArea">
+            <h2>Pro Cal 40 Gypsum Calculation</h2>
+            <div id="calculationDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        // Define Mg and Na ranges for the chart
+        const mgValues = Array.from({ length: (600 - 100) / 25 + 1 }, (_, i) => 100 + i * 25); // 100 to 600 ppm, step 25
+        const naValues = Array.from({ length: (300 - 50) / 25 + 1 }, (_, i) => 50 + i * 25); // 50 to 300 ppm, step 25
+
+        // Function to format numbers with commas
+        function formatNumber(num) {
+            return num.toLocaleString('en-US', { minimumFractionDigits: num % 1 !== 0 ? 2 : 0 });
+        }
+
+        // Function to interpolate between two colors based on a value
+        function interpolateColor(value, minValue, maxValue) {
+            const green = [0, 255, 0]; // #00FF00
+            const yellow = [255, 255, 0]; // #FFFF00
+            const red = [255, 0, 0]; // #FF0000
+
+            let r, g, b;
+            if (value <= minValue) return `rgb(${green[0]}, ${green[1]}, ${green[2]})`;
+            if (value >= maxValue) return `rgb(${red[0]}, ${red[1]}, ${red[2]})`;
+
+            const midValue = (minValue + maxValue) / 2;
+            if (value <= midValue) {
+                const ratio = (value - minValue) / (midValue - minValue);
+                r = Math.round(green[0] + ratio * (yellow[0] - green[0]));
+                g = Math.round(green[1] + ratio * (yellow[1] - green[1]));
+                b = Math.round(green[2] + ratio * (yellow[2] - green[2]));
+            } else {
+                const ratio = (value - midValue) / (maxValue - midValue);
+                r = Math.round(yellow[0] + ratio * (red[0] - yellow[0]));
+                g = Math.round(yellow[1] + ratio * (red[1] - yellow[1]));
+                b = Math.round(yellow[2] + ratio * (red[2] - yellow[2]));
+            }
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // Function to calculate gypsum recommendation
+        function calculateGypsumRec(cec, mg, na, targetBSMg) {
+            if (mg >= 400 && na >= 100) {
+                return Math.max(0, Math.round(
+                    (((mg / 120) - (targetBSMg * cec)) * 2000) +
+                    (((na / 230) - (0.02 * cec)) * 2000)
+                ));
+            } else if (mg >= 400 && na < 100) {
+                return Math.max(0, Math.round(
+                    ((mg / 120) - (targetBSMg * cec)) * 2000
+                ));
+            } else if (mg < 400 && na >= 100) {
+                return Math.max(0, Math.round(
+                    ((na / 230) - (0.02 * cec)) * 2000
+                ));
+            } else {
+                return 0;
+            }
+        }
+
+        // Initialize the chart
+        const ctx = document.getElementById('myChart').getContext('2d');
+        let myChart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeInOutQuad',
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: { display: true, text: 'Mg Level (ppm)', color: '#333' },
+                        ticks: { color: '#333', stepSize: 50 },
+                        min: 100,
+                        max: 600
+                    },
+                    y: {
+                        type: 'linear',
+                        title: { display: true, text: 'Na Level (ppm)', color: '#333' },
+                        ticks: { color: '#333', stepSize: 50 },
+                        min: 50,
+                        max: 300
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return [
+                                    `Mg: ${context.raw.x} ppm`,
+                                    `Na: ${context.raw.y} ppm`,
+                                    `Gypsum: ${formatNumber(context.raw.gypsumRate)} lbs/ac`
+                                ];
+                            }
+                        }
+                    },
+                    annotation: {
+                        annotations: [
+                            {
+                                type: 'line',
+                                xMin: 400,
+                                xMax: 400,
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 3,
+                                label: {
+                                    content: 'Mg = 400 ppm Threshold',
+                                    enabled: true,
+                                    position: 'top'
+                                }
+                            },
+                            {
+                                type: 'line',
+                                yMin: 100,
+                                yMax: 100,
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 3,
+                                label: {
+                                    content: 'Na = 100 ppm Threshold',
+                                    enabled: true,
+                                    position: 'right'
+                                }
+                            }
+                        ]
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 10,
+                        pointStyle: 'rect'
+                    }
+                }
+            }
+        });
+
+        // Function to update the chart based on user inputs
+        function updateChart() {
+            const cec = parseFloat(document.getElementById('cec').value) || 18;
+            const targetBSMg = parseFloat(document.getElementById('targetBSMg').value) || 0.165;
+
+            const dataPoints = [];
+            const minGypsumRate = 0;
+            const maxGypsumRate = 12000; // Approximate max based on formula
+
+            mgValues.forEach(mg => {
+                naValues.forEach(na => {
+                    const gypsumRate = calculateGypsumRec(cec, mg, na, targetBSMg);
+                    const color = interpolateColor(gypsumRate, minGypsumRate, maxGypsumRate);
+                    dataPoints.push({
+                        x: mg,
+                        y: na,
+                        gypsumRate: gypsumRate,
+                        backgroundColor: color
+                    });
+                });
+            });
+
+            myChart.data.datasets = [{
+                label: 'Gypsum Rate',
+                data: dataPoints,
+                backgroundColor: dataPoints.map(point => point.backgroundColor),
+                borderWidth: 1,
+                pointStyle: 'rect',
+                radius: 10
+            }];
+
+            myChart.options.scales.y.max = 300;
+            myChart.options.scales.y.min = 50;
+            myChart.options.scales.x.max = 600;
+            myChart.options.scales.x.min = 100;
+            myChart.update();
+        }
+
+        // Function to update the calculation area only
+        function updateCalculationOnly() {
+            const cec = parseFloat(document.getElementById('cec').value) || 18;
+            const mg = parseFloat(document.getElementById('mg').value) || 415;
+            const na = parseFloat(document.getElementById('na').value) || 120;
+            const targetBSMg = parseFloat(document.getElementById('targetBSMg').value) || 0.165;
+
+            updateCalculationArea(cec, mg, na, targetBSMg);
+        }
+
+        // Function to update the calculation area
+        function updateCalculationArea(cec, mg, na, targetBSMg) {
+            const gypsumRate = calculateGypsumRec(cec, mg, na, targetBSMg);
+            const calculationDetails = document.getElementById('calculationDetails');
+
+            let html = `<div class="section"><p>User-Entered Values:</p>`;
+            html += `<table><tr><th>Parameter</th><th>Value</th></tr>`;
+            html += `<tr><td>CEC (meq/100g)</td><td>${cec}</td></tr>`;
+            html += `<tr><td>Mg (ppm)</td><td>${mg}</td></tr>`;
+            html += `<tr><td>Na (ppm)</td><td>${na}</td></tr>`;
+            html += `<tr><td>Target BS Mg (%)</td><td>${(targetBSMg * 100).toFixed(1)}</td></tr>`;
+            html += `</table></div>`;
+
+            html += `<div class="section formula"><p>Formula Breakdown:</p>`;
+            html += `<p><span class="step-label">Condition 1:</span> If Mg ≥ 400 ppm and Na ≥ 100 ppm</p>`;
+            html += `<p>Formula: (((Mg / 120) - (Target BS Mg × CEC)) × 2000) + (((Na / 230) - (0.02 × CEC)) × 2000)</p>`;
+            html += `<p><span class="step-label">Condition 2:</span> If Mg ≥ 400 ppm and Na < 100 ppm</p>`;
+            html += `<p>Formula: ((Mg / 120) - (Target BS Mg × CEC)) × 2000</p>`;
+            html += `<p><span class="step-label">Condition 3:</span> If Mg < 400 ppm and Na ≥ 100 ppm</p>`;
+            html += `<p>Formula: ((Na / 230) - (0.02 × CEC)) × 2000</p>`;
+            html += `<p><span class="step-label">Condition 4:</span> If Mg < 400 ppm and Na < 100 ppm</p>`;
+            html += `<p>Formula: 0 lbs/ac</p>`;
+            html += `</div>`;
+
+            html += `<div class="section calculation"><p>Calculation:</p>`;
+            html += `<p><span class="step-label">Evaluation:</span> Mg = ${mg} ppm, Na = ${na} ppm</p>`;
+            let conditionMet = '';
+            if (mg >= 400 && na >= 100) {
+                conditionMet = 'Condition 1';
+                html += `<p class="condition-met">Condition Met: ${conditionMet}</p>`;
+                html += `<p><span class="step-label">Formula Applied:</span> (((Mg / 120) - (Target BS Mg × CEC)) × 2000) + (((Na / 230) - (0.02 × CEC)) × 2000)</p>`;
+                const mgTerm = (mg / 120) - (targetBSMg * cec);
+                const naTerm = (na / 230) - (0.02 * cec);
+                html += `<p><span class="step-label">Step 1:</span> Mg Term = (${mg} / 120) - (${targetBSMg} × ${cec}) = ${formatNumber(mg / 120)} - ${formatNumber(targetBSMg * cec)} = ${formatNumber(mgTerm)}</p>`;
+                html += `<p><span class="step-label">Step 2:</span> Na Term = (${na} / 230) - (0.02 × ${cec}) = ${formatNumber(na / 230)} - ${formatNumber(0.02 * cec)} = ${formatNumber(naTerm)}</p>`;
+                html += `<p><span class="step-label">Step 3:</span> Gypsum = (${formatNumber(mgTerm)} × 2000) + (${formatNumber(naTerm)} × 2000) = ${formatNumber(mgTerm * 2000)} + ${formatNumber(naTerm * 2000)} = ${formatNumber(gypsumRate)} lbs/ac</p>`;
+            } else if (mg >= 400 && na < 100) {
+                conditionMet = 'Condition 2';
+                html += `<p class="condition-met">Condition Met: ${conditionMet}</p>`;
+                html += `<p><span class="step-label">Formula Applied:</span> ((Mg / 120) - (Target BS Mg × CEC)) × 2000</p>`;
+                const mgTerm = (mg / 120) - (targetBSMg * cec);
+                html += `<p><span class="step-label">Step 1:</span> Mg Term = (${mg} / 120) - (${targetBSMg} × ${cec}) = ${formatNumber(mg / 120)} - ${formatNumber(targetBSMg * cec)} = ${formatNumber(mgTerm)}</p>`;
+                html += `<p><span class="step-label">Step 2:</span> Gypsum = ${formatNumber(mgTerm)} × 2000 = ${formatNumber(gypsumRate)} lbs/ac</p>`;
+            } else if (mg < 400 && na >= 100) {
+                conditionMet = 'Condition 3';
+                html += `<p class="condition-met">Condition Met: ${conditionMet}</p>`;
+                html += `<p><span class="step-label">Formula Applied:</span> ((Na / 230) - (0.02 × CEC)) × 2000</p>`;
+                const naTerm = (na / 230) - (0.02 * cec);
+                html += `<p><span class="step-label">Step 1:</span> Na Term = (${na} / 230) - (0.02 × ${cec}) = ${formatNumber(na / 230)} - ${formatNumber(0.02 * cec)} = ${formatNumber(naTerm)}</p>`;
+                html += `<p><span class="step-label">Step 2:</span> Gypsum = ${formatNumber(naTerm)} × 2000 = ${formatNumber(gypsumRate)} lbs/ac</p>`;
+            } else {
+                conditionMet = 'Condition 4';
+                html += `<p class="condition-met">Condition Met: ${conditionMet}</p>`;
+                html += `<p><span class="step-label">Formula Applied:</span> 0 lbs/ac (Mg < 400 ppm and Na < 100 ppm)</p>`;
+            }
+            html += `<p class="result">Final Result: ${formatNumber(gypsumRate)} lbs/ac</p>`;
+            html += `</div>`;
+
+            html += `<div class="section explanation"><p>**Explanation:**</p>`;
+            if (gypsumRate === 0) {
+                html += `<p class="explanation">Since Mg (${mg} ppm) is less than 400 ppm and Na (${na} ppm) is less than 100 ppm, no gypsum is recommended. The Pro Cal 40 formula assesses soil Mg and Na levels against thresholds to determine if gypsum is needed to adjust soil health. With current levels below the thresholds, the soil does not require additional gypsum to manage magnesium or sodium imbalances.</p>`;
+            } else {
+                html += `<p class="explanation">Since ${conditionMet === 'Condition 1' ? 'Mg (' + mg + ' ppm) ≥ 400 ppm and Na (' + na + ' ppm) ≥ 100 ppm' : conditionMet === 'Condition 2' ? 'Mg (' + mg + ' ppm) ≥ 400 ppm' : 'Na (' + na + ' ppm) ≥ 100 ppm'}, gypsum is recommended to address soil imbalances. The Pro Cal 40 formula calculates the amount needed based on the difference between current Mg and Na levels and their target base saturations (Target BS Mg = ${targetBSMg * 100}%), adjusted by CEC (${cec} meq/100g). This recommendation helps reduce excess Mg or Na, improving soil structure and nutrient availability for crops over time.</p>`;
+            }
+            html += `</div>`;
+
+            calculationDetails.innerHTML = html;
+        }
+
+        // Event listeners for input changes
+        document.getElementById('cec').addEventListener('input', () => {
+            updateChart();
+            updateCalculationOnly();
+        });
+        document.getElementById('mg').addEventListener('input', updateCalculationOnly);
+        document.getElementById('na').addEventListener('input', updateCalculationOnly);
+        document.getElementById('targetBSMg').addEventListener('change', () => {
+            updateChart();
+            updateCalculationOnly();
+        });
+
+        // Initial chart render
+        updateChart();
+        updateCalculationOnly();
+    </script>
+</body>
+</html>
