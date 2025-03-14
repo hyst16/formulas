@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ag Lime Recommendation (Sikora 2)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+        #chartContainer {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            height: 600px;
+        }
+        select, input {
+            padding: 10px;
+            margin: 10px 5px;
+            border-radius: 5px;
+            background-color: #ddd;
+            color: #333;
+            border: none;
+            cursor: pointer;
+        }
+        canvas {
+            max-width: 100%;
+            height: 100% !important;
+        }
+        h1 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        label {
+            margin-right: 10px;
+        }
+        #legendContainer {
+            margin-top: 10px;
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+        }
+        #legendGradient {
+            width: 100%;
+            height: 20px;
+            background: linear-gradient(to right, #00FF00, #FFFF00, #FF0000);
+            margin-bottom: 5px;
+        }
+        #legendLabels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+        #calculationArea {
+            margin-top: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+        }
+        #calculationArea h2 {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        #calculationArea .section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 4px solid #4CAF50; /* Green for User Values */
+        }
+        #calculationArea .section.parameters {
+            border-left-color: #2196F3; /* Blue for Parameters */
+        }
+        #calculationArea .section.formula {
+            border-left-color: #9C27B0; /* Purple for Formula */
+        }
+        #calculationArea .section.calculation {
+            border-left-color: #FF9800; /* Orange for Calculation */
+        }
+        #calculationArea .section.explanation {
+            border-left-color: #607D8B; /* Grey for Explanation */
+        }
+        #calculationArea table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        #calculationArea th, #calculationArea td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        #calculationArea th {
+            background-color: #f0f0f0;
+        }
+        #calculationArea tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        #calculationArea p {
+            margin: 5px 0;
+        }
+        #calculationArea .step-label {
+            font-weight: bold;
+        }
+        #calculationArea .result {
+            font-weight: bold;
+            padding: 5px 10px;
+            background-color: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        #calculationArea .explanation {
+            font-style: italic;
+        }
+        @media (max-width: 600px) {
+            #calculationArea {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+            #calculationArea h2 {
+                font-size: 1.1em;
+            }
+            #calculationArea th, #calculationArea td {
+                padding: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ag Lime Recommendation vs Soil pH (Sikora 2)</h1>
+        <div>
+            <label for="targetPH">Target pH:</label>
+            <select id="targetPH">
+                <option value="6">6</option>
+                <option value="6.5">6.5</option>
+                <option value="7" selected>7</option>
+            </select>
+            <label for="measuredPH">Measured pH:</label>
+            <input type="number" id="measuredPH" value="4.5" min="4" max="8" step="0.1">
+            <label for="measuredBpH">Measured bpH:</label>
+            <input type="number" id="measuredBpH" value="5.7" min="5" max="8" step="0.1">
+            <label for="cce">CCE of Lime (%):</label>
+            <input type="number" id="cce" value="51" min="0" max="100" step="1">
+            <label for="soilDepth">Soil Depth (inches):</label>
+            <input type="number" id="soilDepth" value="8" min="1" max="12" step="1">
+        </div>
+        <div id="chartContainer">
+            <canvas id="myChart"></canvas>
+        </div>
+        <div id="legendContainer">
+            <div id="legendGradient"></div>
+            <div id="legendLabels">
+                <span>0 lbs/ac</span>
+                <span>8,720 lbs/ac</span>
+                <span>17,434 lbs/ac</span>
+            </div>
+        </div>
+        <div id="calculationArea">
+            <h2>Ag Lime Recommendation Calculation</h2>
+            <div id="calculationDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        // Define pH and buffer pH ranges for the chart
+        const pHValues = Array.from({ length: 26 }, (_, i) => 4.5 + (i * 0.1)); // 4.5 to 7.0
+        const bufferPHValues = Array.from({ length: 21 }, (_, i) => 5.2 + (i * 0.1)); // 5.2 to 7.2
+
+        // Function to format numbers with commas
+        function formatNumber(num) {
+            return num.toLocaleString('en-US', { minimumFractionDigits: num % 1 !== 0 ? 2 : 0 });
+        }
+
+        // Function to interpolate between two colors based on a value
+        function interpolateColor(value, minValue, maxValue) {
+            const green = [0, 255, 0]; // #00FF00
+            const yellow = [255, 255, 0]; // #FFFF00
+            const red = [255, 0, 0]; // #FF0000
+
+            let r, g, b;
+            if (value <= minValue) return `rgb(${green[0]}, ${green[1]}, ${green[2]})`;
+            if (value >= maxValue) return `rgb(${red[0]}, ${red[1]}, ${red[2]})`;
+
+            const midValue = (minValue + maxValue) / 2;
+            if (value <= midValue) {
+                const ratio = (value - minValue) / (midValue - minValue);
+                r = Math.round(green[0] + ratio * (yellow[0] - green[0]));
+                g = Math.round(green[1] + ratio * (yellow[1] - green[1]));
+                b = Math.round(green[2] + ratio * (yellow[2] - green[2]));
+            } else {
+                const ratio = (value - midValue) / (maxValue - midValue);
+                r = Math.round(yellow[0] + ratio * (red[0] - yellow[0]));
+                g = Math.round(yellow[1] + ratio * (red[1] - yellow[1]));
+                b = Math.round(yellow[2] + ratio * (red[2] - yellow[2]));
+            }
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // Initialize the chart
+        const ctx = document.getElementById('myChart').getContext('2d');
+        let myChart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeInOutQuad',
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: { display: true, text: 'Measured pH', color: '#333' },
+                        ticks: { color: '#333', stepSize: 0.1 },
+                        min: 4.5,
+                        max: 7.0
+                    },
+                    y: {
+                        type: 'linear',
+                        title: { display: true, text: 'Buffer pH', color: '#333' },
+                        ticks: { color: '#333', stepSize: 0.1 },
+                        min: 5.2,
+                        max: 7.2
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return [
+                                    `Measured pH: ${context.raw.x.toFixed(1)}`,
+                                    `Buffer pH: ${context.raw.y.toFixed(1)}`,
+                                    `Lime Rate: ${formatNumber(context.raw.limeRate)} lbs/ac`
+                                ];
+                            }
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 10,
+                        pointStyle: 'rect'
+                    }
+                }
+            }
+        });
+
+        // Function to calculate lime recommendation (Sikora 2 method)
+        function calculateLimeRec(targetPH, measuredPH, measuredBpH, cce, soilDepth) {
+            // Step 4: If measured pH >= target pH, set LimeRec to 0
+            if (measuredPH >= targetPH) {
+                return { tonsAc: 0, lbsAc: 0, steps: { Final_LR: 0 } };
+            }
+
+            // Step 5: Calculate minimum buffer pH
+            const BpH_minimum = (targetPH * 1.02) - 1.03;
+
+            // Step 6: Determine buffer pH to use
+            const BpH_calc = measuredBpH < BpH_minimum ? BpH_minimum : measuredBpH;
+
+            // Step 7: Calculate Adjustment #1
+            const Adj1 = ((targetPH - measuredPH) * 1.02) * (BpH_calc - 7.55);
+
+            // Step 8: Calculate Adjustment #2
+            const Adj2 = (BpH_calc - ((measuredPH * 1.02) - 1.03)) * -0.372;
+
+            // Step 9: Calculate preliminary lime rate
+            const PreLR = Adj1 / Adj2;
+
+            // Step 10: Calculate field correction factor
+            const FCF_calc = 3.62 - (PreLR * 0.367);
+
+            // Step 11: Determine final FCF
+            const FCF = measuredPH > targetPH ? 0 : FCF_calc;
+
+            // Step 12: Calculate final lime recommendation (tons/ac)
+            const LimeRec = (PreLR * FCF) / 2;
+
+            // Adjust for lime quality (CCE)
+            const LRq = LimeRec / (cce / 100);
+
+            // Adjust for soil depth
+            const LRd = LRq * (soilDepth / 8);
+
+            // Convert to lbs/ac
+            const lbsAc = LRd * 2000;
+
+            return {
+                tonsAc: LRd,
+                lbsAc: lbsAc,
+                steps: {
+                    Final_LR: measuredPH >= targetPH ? 0 : LRd,
+                    BpH_minimum,
+                    BpH_calc,
+                    Adj1,
+                    Adj2,
+                    PreLR,
+                    FCF_calc,
+                    FCF
+                }
+            };
+        }
+
+        // Function to update the chart based on user inputs
+        function updateChart() {
+            const targetPH = parseFloat(document.getElementById('targetPH').value) || 7;
+            const cce = parseFloat(document.getElementById('cce').value) || 51;
+            const soilDepth = parseFloat(document.getElementById('soilDepth').value) || 8;
+
+            // Update chart datasets with smooth animation
+            const dataPoints = [];
+            const minLimeRate = 0;
+            const maxLimeRate = 17434; // Approximate max from spreadsheet
+
+            pHValues.forEach(ph => {
+                bufferPHValues.forEach(bph => {
+                    const result = calculateLimeRec(targetPH, ph, bph, cce, soilDepth);
+                    const limeRate = result.lbsAc;
+                    const color = interpolateColor(limeRate, minLimeRate, maxLimeRate);
+                    dataPoints.push({
+                        x: ph,
+                        y: bph,
+                        limeRate: limeRate,
+                        backgroundColor: color
+                    });
+                });
+            });
+
+            myChart.data.datasets = [{
+                label: 'Lime Rate',
+                data: dataPoints,
+                backgroundColor: dataPoints.map(point => point.backgroundColor),
+                borderWidth: 1,
+                pointStyle: 'rect',
+                radius: 10
+            }];
+
+            myChart.options.scales.y.max = 7.2;
+            myChart.options.scales.y.min = 5.2;
+            myChart.options.scales.x.max = 7.0;
+            myChart.options.scales.x.min = 4.5;
+            myChart.update(); // Triggers smooth animation
+        }
+
+        // Function to update the calculation area only
+        function updateCalculationOnly() {
+            const targetPH = parseFloat(document.getElementById('targetPH').value) || 7;
+            const measuredPH = parseFloat(document.getElementById('measuredPH').value) || 4.5;
+            const measuredBpH = parseFloat(document.getElementById('measuredBpH').value) || 5.7;
+            const cce = parseFloat(document.getElementById('cce').value) || 51;
+            const soilDepth = parseFloat(document.getElementById('soilDepth').value) || 8;
+
+            updateCalculationArea(targetPH, measuredPH, measuredBpH, cce, soilDepth);
+        }
+
+        // Function to update the calculation area
+        function updateCalculationArea(targetPH, measuredPH, measuredBpH, cce, soilDepth) {
+            const result = calculateLimeRec(targetPH, measuredPH, measuredBpH, cce, soilDepth);
+            const calculationDetails = document.getElementById('calculationDetails');
+
+            let html = `<div class="section"><p>User-Entered Values:</p>`;
+            html += `<table><tr><th>Parameter</th><th>Value</th></tr>`;
+            html += `<tr><td>Target pH</td><td>${targetPH}</td></tr>`;
+            html += `<tr><td>Measured pH</td><td>${measuredPH}</td></tr>`;
+            html += `<tr><td>Measured bpH</td><td>${measuredBpH}</td></tr>`;
+            html += `<tr><td>CCE of Lime (%)</td><td>${cce}</td></tr>`;
+            html += `<tr><td>Soil Depth (inches)</td><td>${soilDepth}</td></tr>`;
+            html += `</table></div>`;
+
+            html += `<div class="section formula"><p>Formula Steps:</p>`;
+            html += `<p><span class="step-label">Step 4:</span> If measured pH is greater than or equal to target pH, set Final_LR to 0, otherwise proceed with calculations</p>`;
+            html += `<p><span class="step-label">Step 5:</span> Calculate minimum buffer pH: BpH_minimum = (pH_target * 1.02) - 1.03</p>`;
+            html += `<p><span class="step-label">Step 6:</span> Determine buffer pH to use: If BpH_measured is less than BpH_minimum, use BpH_minimum, otherwise use BpH_measured</p>`;
+            html += `<p><span class="step-label">Step 7:</span> Calculate Adjustment #1: Adj1 = [(pH_target - pH_measured) * 1.02] * (BpH_calc - 7.55)</p>`;
+            html += `<p><span class="step-label">Step 8:</span> Calculate Adjustment #2: Adj2 = [BpH_calc - ((pH_measured * 1.02) - 1.03)] * -0.372</p>`;
+            html += `<p><span class="step-label">Step 9:</span> Calculate preliminary lime rate: PreLR = Adj1 / Adj2</p>`;
+            html += `<p><span class="step-label">Step 10:</span> Calculate field correction factor: FCF_calc = 3.62 - (Pre_LR * 0.367)</p>`;
+            html += `<p><span class="step-label">Step 11:</span> Determine final FCF: If pH_measured is greater than pH_target, set FCF to 0, otherwise set FCF to FCF_calc</p>`;
+            html += `<p><span class="step-label">Step 12:</span> Calculate final lime recommendation (tons/ac): LimeRec = (Pre_LR * FCF) / 2</p>`;
+            html += `<p><span class="step-label">Adjust for lime quality:</span> LRq = LimeRec / (CCE / 100)</p>`;
+            html += `<p><span class="step-label">Adjust for soil depth:</span> LRd = LRq * (Soil Depth / 8)</p>`;
+            html += `<p><span class="step-label">Convert to lbs/ac:</span> Lbs_ac = LRd * 2000</p>`;
+            html += `</div>`;
+
+            html += `<div class="section calculation"><p>Calculation:</p>`;
+            html += `<p><span class="step-label">Step 4:</span> Measured pH (${measuredPH}) is ${measuredPH >= targetPH ? 'greater than or equal to' : 'less than'} Target pH (${targetPH}), so ${measuredPH >= targetPH ? 'set Final_LR to 0' : 'proceed with calculations'}: Final_LR = ${formatNumber(result.steps.Final_LR)}</p>`;
+            html += `<p><span class="step-label">Step 5:</span> BpH_minimum = (${targetPH} * 1.02) - 1.03 = ${result.steps.BpH_minimum.toFixed(2)}</p>`;
+            html += `<p><span class="step-label">Step 6:</span> Since BpH_measured (${measuredBpH}) is ${measuredBpH < result.steps.BpH_minimum ? 'less than' : 'not less than'} BpH_minimum (${result.steps.BpH_minimum.toFixed(2)}), BpH_calc is set to ${measuredBpH < result.steps.BpH_minimum ? result.steps.BpH_minimum.toFixed(2) : measuredBpH}</p>`;
+            html += `<p><span class="step-label">Step 7:</span> Adj1 = [(${targetPH} - ${measuredPH}) * 1.02] * (${result.steps.BpH_calc.toFixed(2)} - 7.55) = ${formatNumber(result.steps.Adj1)}</p>`;
+            html += `<p><span class="step-label">Step 8:</span> Adj2 = [${result.steps.BpH_calc.toFixed(2)} - ((${measuredPH} * 1.02) - 1.03)] * -0.372 = ${formatNumber(result.steps.Adj2)}</p>`;
+            html += `<p><span class="step-label">Step 9:</span> PreLR = ${formatNumber(result.steps.Adj1)} / ${formatNumber(result.steps.Adj2)} = ${formatNumber(result.steps.PreLR)}</p>`;
+            html += `<p><span class="step-label">Step 10:</span> FCF_calc = 3.62 - (${formatNumber(result.steps.PreLR)} * 0.367) = ${formatNumber(result.steps.FCF_calc)}</p>`;
+            html += `<p><span class="step-label">Step 11:</span> Since measured pH (${measuredPH}) is ${measuredPH > targetPH ? 'greater than' : 'not greater than'} target pH (${targetPH}), FCF is set to ${measuredPH > targetPH ? '0' : formatNumber(result.steps.FCF_calc)}</p>`;
+            html += `<p><span class="step-label">Step 12:</span> LimeRec = (${formatNumber(result.steps.PreLR)} * ${formatNumber(result.steps.FCF)}) / 2 = ${formatNumber(result.tonsAc)} tons/ac (before adjustments)</p>`;
+            html += `<p><span class="step-label">Adjust for lime quality:</span> LRq = ${formatNumber(result.tonsAc)} / (${cce} / 100) = ${formatNumber(result.tonsAc / (cce / 100))} tons/ac</p>`;
+            html += `<p><span class="step-label">Adjust for soil depth:</span> LRd = ${formatNumber(result.tonsAc / (cce / 100))} * (${soilDepth} / 8) = ${formatNumber(result.tonsAc)} tons/ac</p>`;
+            html += `<p class="result">Final Result: ${formatNumber(result.tonsAc)} tons/ac or ${formatNumber(result.lbsAc)} lbs/ac</p>`;
+            html += `</div>`;
+
+            html += `<div class="section explanation"><p>**Explanation:**</p>`;
+            if (measuredPH >= targetPH) {
+                html += `<p class="explanation">Since the measured soil pH (${measuredPH}) is greater than or equal to the target pH (${targetPH}), no agricultural lime is required. The Sikora-2 method, utilized by ServiTech Laboratories, assesses both soil pH and buffer pH to determine lime needs, but in this case, the current soil pH already meets or exceeds the desired level for optimal crop growth over the next three to five years, assuming proper soil incorporation. No adjustments for reserve acidity or lime quality are necessary.</p>`;
+            } else {
+                html += `<p class="explanation">Since the measured soil pH (${measuredPH}) is less than the target pH (${targetPH}), agricultural lime is required to raise the soil pH and address reserve acidity, a critical factor in soil fertility. The Sikora-2 method, a two-point approach adopted by ServiTech Laboratories in 2014, uniquely combines the measured soil pH with the buffer pH (${measuredBpH}) to estimate the amount of reserve acidity more accurately than single-point methods like SMP or Sikora-1. This method uses a potassium chloride (1 M KCl) solution to measure soil pH, offsetting soluble salt effects from drought or fertilizers, and provides a more stable reading, especially in sandy or low cation exchange capacity (CEC) soils common in the Great Plains. The buffer pH indicates the soil’s reserve acidity, and the calculated minimum buffer pH (${result.steps.BpH_minimum.toFixed(2)}) ensures the analysis accounts for the target pH adjustment. The preliminary lime rate of ${formatNumber(result.steps.PreLR)} tons per acre is derived from the pH difference (${(targetPH - measuredPH).toFixed(2)}) and buffer capacity (BpH_calc = ${result.steps.BpH_calc.toFixed(2)}), adjusted by the field correction factor (${formatNumber(result.steps.FCF)}), which refines the recommendation based on soil variability. The final lime rate of ${formatNumber(result.tonsAc)} tons per acre, or ${formatNumber(result.lbsAc)} lbs per acre, is adjusted for a ${cce}% Effective Calcium Carbonate Equivalent (ECCE) lime source and a ${soilDepth}-inch soil depth, reflecting the quality and application depth of the liming material. This recommendation is designed to raise the soil pH to the target level over approximately three to five years when incorporated to the assumed 8-inch depth, though field conditions such as soil texture, organic matter, or moisture may shorten or extend this period. This rate ensures improved soil conditions for crop growth by neutralizing acidity on both soil water and cation exchange sites.</p>`;
+            }
+            html += `</div>`;
+
+            calculationDetails.innerHTML = html;
+        }
+
+        // Event listeners for input changes
+        document.getElementById('targetPH').addEventListener('change', () => {
+            updateChart();
+            updateCalculationOnly();
+        });
+        document.getElementById('measuredPH').addEventListener('input', updateCalculationOnly);
+        document.getElementById('measuredBpH').addEventListener('input', updateCalculationOnly);
+        document.getElementById('cce').addEventListener('change', () => {
+            updateChart();
+            updateCalculationOnly();
+        });
+        document.getElementById('soilDepth').addEventListener('change', () => {
+            updateChart();
+            updateCalculationOnly();
+        });
+
+        // Initial chart render
+        updateChart();
+        updateCalculationOnly();
+    </script>
+</body>
+</html>
