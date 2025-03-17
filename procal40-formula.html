@@ -57,7 +57,7 @@
         #legendGradient {
             width: 100%;
             height: 20px;
-            background: linear-gradient(to right, #00FF00, #FFFF00, #FF0000);
+            background: linear-gradient(to right, #FFFFFF, #99FF99 10%, #CCFF33 20%, #FFFF00 40%, #FF9900 60%, #FF0000);
             margin-bottom: 5px;
         }
         #legendLabels {
@@ -232,9 +232,12 @@
         <div id="legendContainer">
             <div id="legendGradient"></div>
             <div id="legendLabels">
-                <span>0 lbs/ac</span>
-                <span>6000 lbs/ac</span>
-                <span>12000 lbs/ac</span>
+                <span>0</span>
+                <span>300</span>
+                <span>1,000</span>
+                <span>3,000</span>
+                <span>6,000</span>
+                <span>12,000</span>
             </div>
         </div>
         <div id="thresholdLegend">
@@ -276,27 +279,32 @@
 
         // Function to interpolate between two colors based on a value
         function interpolateColor(value, minValue, maxValue) {
-            const green = [0, 255, 0]; // #00FF00
-            const yellow = [255, 255, 0]; // #FFFF00
-            const red = [255, 0, 0]; // #FF0000
+            const colorStops = [
+                { value: 0, color: [255, 255, 255] },   // White for 0 lbs/ac
+                { value: 300, color: [153, 255, 153] }, // Light Green
+                { value: 1000, color: [204, 255, 51] }, // Yellow-Green
+                { value: 3000, color: [255, 255, 0] },  // Yellow
+                { value: 6000, color: [255, 153, 0] },  // Orange
+                { value: 12000, color: [255, 0, 0] }    // Red
+            ];
 
-            let r, g, b;
-            if (value <= minValue) return `rgb(${green[0]}, ${green[1]}, ${green[2]})`;
-            if (value >= maxValue) return `rgb(${red[0]}, ${red[1]}, ${red[2]})`;
+            // If value is 0, return white
+            if (value === 0) return `rgb(${colorStops[0].color[0]}, ${colorStops[0].color[1]}, ${colorStops[0].color[2]})`;
+            
+            // For values > 0, interpolate between the remaining stops
+            if (value >= maxValue) return `rgb(${colorStops[colorStops.length - 1].color[0]}, ${colorStops[colorStops.length - 1].color[1]}, ${colorStops[colorStops.length - 1].color[2]})`;
 
-            const midValue = (minValue + maxValue) / 2;
-            if (value <= midValue) {
-                const ratio = (value - minValue) / (midValue - minValue);
-                r = Math.round(green[0] + ratio * (yellow[0] - green[0]));
-                g = Math.round(green[1] + ratio * (yellow[1] - green[1]));
-                b = Math.round(green[2] + ratio * (yellow[2] - green[2]));
-            } else {
-                const ratio = (value - midValue) / (maxValue - midValue);
-                r = Math.round(yellow[0] + ratio * (red[0] - yellow[0]));
-                g = Math.round(yellow[1] + ratio * (red[1] - yellow[1]));
-                b = Math.round(yellow[2] + ratio * (red[2] - yellow[2]));
+            for (let i = 0; i < colorStops.length - 1; i++) {
+                const start = colorStops[i];
+                const end = colorStops[i + 1];
+                if (value >= start.value && value <= end.value) {
+                    const ratio = (value - start.value) / (end.value - start.value);
+                    const r = Math.round(start.color[0] + ratio * (end.color[0] - start.color[0]));
+                    const g = Math.round(start.color[1] + ratio * (end.color[1] - start.color[1]));
+                    const b = Math.round(start.color[2] + ratio * (end.color[2] - start.color[2]));
+                    return `rgb(${r}, ${g}, ${b})`;
+                }
             }
-            return `rgb(${r}, ${g}, ${b})`;
         }
 
         // Function to calculate gypsum recommendation
